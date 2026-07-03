@@ -8,9 +8,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/arnesssr/OpenAgentsGate/internal/approval"
 	"github.com/arnesssr/OpenAgentsGate/internal/audit"
 	"github.com/arnesssr/OpenAgentsGate/internal/decision"
+	"github.com/arnesssr/OpenAgentsGate/internal/gateway"
 	"github.com/arnesssr/OpenAgentsGate/internal/policy"
+	"github.com/arnesssr/OpenAgentsGate/internal/revocation"
+	"github.com/arnesssr/OpenAgentsGate/internal/risk"
 )
 
 func TestDecideEndpointRecordsDecision(t *testing.T) {
@@ -28,11 +32,32 @@ func TestDecideEndpointRecordsDecision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new evaluator: %v", err)
 	}
-	recorder, err := audit.NewRecorder(filepath.Join(t.TempDir(), "audit.jsonl"))
+	dir := t.TempDir()
+	recorder, err := audit.NewRecorder(filepath.Join(dir, "audit.jsonl"))
 	if err != nil {
 		t.Fatalf("new recorder: %v", err)
 	}
-	srv, err := New(evaluator, recorder)
+	approvals, err := approval.NewStore(filepath.Join(dir, "approvals.jsonl"))
+	if err != nil {
+		t.Fatalf("new approvals: %v", err)
+	}
+	revocations, err := revocation.NewStore(filepath.Join(dir, "revocations.jsonl"))
+	if err != nil {
+		t.Fatalf("new revocations: %v", err)
+	}
+	classifier, err := risk.NewClassifier(nil)
+	if err != nil {
+		t.Fatalf("new classifier: %v", err)
+	}
+	service, err := gateway.New(evaluator, classifier, gateway.Stores{
+		Audit:       recorder,
+		Approvals:   approvals,
+		Revocations: revocations,
+	})
+	if err != nil {
+		t.Fatalf("new gateway: %v", err)
+	}
+	srv, err := New(service, "")
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}

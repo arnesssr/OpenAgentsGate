@@ -30,7 +30,7 @@ action, and make dangerous autonomy auditable, revocable, and debuggable.
 
 - Enforce capability-based permissions before agent actions run.
 - Require human approval for high-impact operations.
-- Keep signed, replayable action receipts for audit and debugging.
+- Keep tamper-evident, replayable action receipts for audit and debugging.
 - Contain prompt-injection risk from untrusted content.
 - Provide a kill switch and revocation path for agents, tools, and policies.
 - Work across agent frameworks instead of replacing them.
@@ -50,16 +50,32 @@ MCP support belongs in an adapter. It is not a dependency of the core product.
 
 ## Backend Status
 
-The first backend slice is a Go service and CLI with no database dependency.
+The backend is a Go service and CLI with no database dependency.
 
 For v0, the source of truth is:
 
 - A JSON policy file.
 - Append-only JSONL audit receipts.
+- Append-only JSONL approval events.
+- Append-only JSONL revocation events.
 
 SQLite is the likely next storage layer once approvals and audit history need
 querying. Redis is not required for the MVP; it only becomes useful later for
 distributed deployments, realtime fanout, or queueing.
+
+Implemented v0 backend capabilities:
+
+- Protocol-neutral action request model.
+- Configurable risk classification.
+- Default-deny policy evaluation.
+- Allow, deny, approval-required, and dry-run decisions.
+- Pending approval creation and approval resolution.
+- Revocation kill switches for all agents, one agent, one agent instance, one
+  user, one session, or one action.
+- Secret redaction before approval or audit persistence.
+- Append-only, hash-chained audit receipts.
+- Audit receipt lookup and replay against current policy/revocation state.
+- Local HTTP API and CLI commands.
 
 ## Quick Start
 
@@ -85,6 +101,55 @@ curl -s http://127.0.0.1:17671/v1/actions/decide \
 ```
 
 The gateway returns a deterministic decision and records an audit receipt.
+
+List pending approvals:
+
+```bash
+go run ./cmd/openagentsgate approvals list \
+  -config examples/openagentsgate.json -status pending
+```
+
+Resolve an approval:
+
+```bash
+go run ./cmd/openagentsgate approvals resolve \
+  -config examples/openagentsgate.json \
+  -id <approval-id> -status approved -by admin -reason "reviewed"
+```
+
+Revoke an agent:
+
+```bash
+go run ./cmd/openagentsgate revocations add \
+  -config examples/openagentsgate.json \
+  -type agent -id support-agent -by admin -reason "compromised"
+```
+
+Replay an audit receipt against current policy state:
+
+```bash
+go run ./cmd/openagentsgate audit replay \
+  -config examples/openagentsgate.json -id <receipt-id>
+```
+
+HTTP API:
+
+```text
+POST   /v1/actions/decide
+GET    /v1/approvals
+GET    /v1/approvals/{id}
+POST   /v1/approvals/{id}/resolve
+GET    /v1/revocations
+POST   /v1/revocations
+DELETE /v1/revocations/{target_type}/{target_id}
+GET    /v1/audit
+GET    /v1/audit/{id}
+POST   /v1/audit/{id}/replay
+```
+
+By default the service binds to `127.0.0.1`. If you bind it to a non-loopback
+address, configure `admin_token_env` so HTTP API calls require
+`Authorization: Bearer <token>`.
 
 ## Security Posture
 

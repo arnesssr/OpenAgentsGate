@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"github.com/arnesssr/OpenAgentsGate/internal/ids"
 )
 
 // Request is the protocol-neutral action shape evaluated by OpenAgentsGate.
@@ -33,6 +35,7 @@ func (r Request) Validate() error {
 }
 
 func (r Request) WithDefaults(now time.Time) Request {
+	r.RequestID = strings.TrimSpace(r.RequestID)
 	r.AgentID = strings.TrimSpace(r.AgentID)
 	r.AgentInstanceID = strings.TrimSpace(r.AgentInstanceID)
 	r.UserID = strings.TrimSpace(r.UserID)
@@ -43,6 +46,9 @@ func (r Request) WithDefaults(now time.Time) Request {
 	r.Risk = strings.TrimSpace(r.Risk)
 	if r.RequestedAt.IsZero() {
 		r.RequestedAt = now
+	}
+	if r.RequestID == "" {
+		r.RequestID = ids.New()
 	}
 	return r
 }

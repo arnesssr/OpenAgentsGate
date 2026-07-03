@@ -1,6 +1,39 @@
 {
   "listen_addr": "127.0.0.1:17671",
   "audit_log": "tmp/openagentsgate.audit.jsonl",
+  "approval_log": "tmp/openagentsgate.approvals.jsonl",
+  "revocation_log": "tmp/openagentsgate.revocations.jsonl",
+  "risk_rules": [
+    {
+      "id": "external-email",
+      "match": {
+        "actions": ["email.*"],
+        "resources": ["external*"]
+      },
+      "risk": "external_side_effect"
+    },
+    {
+      "id": "shell-execution",
+      "match": {
+        "actions": ["shell.*", "process.*"]
+      },
+      "risk": "code_execution"
+    },
+    {
+      "id": "payment-actions",
+      "match": {
+        "actions": ["payment.*", "money.*"]
+      },
+      "risk": "financial_side_effect"
+    },
+    {
+      "id": "agent-delegation",
+      "match": {
+        "actions": ["agent.*", "a2a.*"]
+      },
+      "risk": "agent_delegation"
+    }
+  ],
   "policy": {
     "default_effect": "deny",
     "rules": [
@@ -13,6 +46,33 @@
         },
         "effect": "approval_required",
         "reason": "external email requires approval"
+      },
+      {
+        "id": "money-needs-approval",
+        "description": "Financial actions must never run without explicit approval.",
+        "match": {
+          "risks": ["financial_side_effect"]
+        },
+        "effect": "approval_required",
+        "reason": "financial side effects require approval"
+      },
+      {
+        "id": "shell-is-dry-run",
+        "description": "Code execution starts in dry-run mode.",
+        "match": {
+          "risks": ["code_execution"]
+        },
+        "effect": "dry_run",
+        "reason": "shell execution requires dry-run review"
+      },
+      {
+        "id": "agent-delegation-needs-approval",
+        "description": "Delegating to another agent changes authority boundaries.",
+        "match": {
+          "risks": ["agent_delegation"]
+        },
+        "effect": "approval_required",
+        "reason": "agent delegation requires approval"
       },
       {
         "id": "deny-file-delete",
