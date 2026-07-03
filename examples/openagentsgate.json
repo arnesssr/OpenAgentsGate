@@ -1,0 +1,37 @@
+{
+  "listen_addr": "127.0.0.1:17671",
+  "audit_log": "tmp/openagentsgate.audit.jsonl",
+  "policy": {
+    "default_effect": "deny",
+    "rules": [
+      {
+        "id": "external-email-needs-approval",
+        "description": "External email can create real-world side effects.",
+        "match": {
+          "actions": ["email.*"],
+          "risks": ["external_side_effect"]
+        },
+        "effect": "approval_required",
+        "reason": "external email requires approval"
+      },
+      {
+        "id": "deny-file-delete",
+        "description": "Destructive local file operations are blocked by default.",
+        "match": {
+          "actions": ["file.delete"]
+        },
+        "effect": "deny",
+        "reason": "file deletion is blocked"
+      },
+      {
+        "id": "allow-github-prs",
+        "description": "Creating pull requests is allowed in the starter policy.",
+        "match": {
+          "actions": ["github.create_pr"]
+        },
+        "effect": "allow",
+        "reason": "pull request creation is allowed"
+      }
+    ]
+  }
+}

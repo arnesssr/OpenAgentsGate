@@ -1,0 +1,15 @@
+{
+  "agent_id": "support-agent",
+  "agent_instance_id": "run_123",
+  "user_id": "admin_456",
+  "session_id": "sess_789",
+  "action": "email.send",
+  "resource": "external_email",
+  "origin": "untrusted_webpage",
+  "risk": "external_side_effect",
+  "input": {
+    "to": "person@example.com",
+    "subject": "Follow up",
+    "api_token": "example-secret-that-will-be-redacted"
+  }
+}
