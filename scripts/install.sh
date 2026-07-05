@@ -111,7 +111,16 @@ main() {
   ext="tar.gz"
   archive="${BIN_NAME}_${tag#v}_${os}_${arch}.${ext}"
   base="https://github.com/$REPO/releases/download/$tag"
-  download "$base/$archive" "$TMP_DIR/$archive"
+  if ! download "$base/$archive" "$TMP_DIR/$archive"; then
+    if [ "$SOURCE" = "auto" ]; then
+      echo "release asset unavailable; falling back to go install"
+      VERSION="$tag"
+      install_from_go
+      return
+    fi
+    echo "could not download release asset: $archive" >&2
+    exit 1
+  fi
   if download "$base/checksums.txt" "$TMP_DIR/checksums.txt" 2>/dev/null; then
     expected="$(awk -v f="$archive" '$2 == f {print $1}' "$TMP_DIR/checksums.txt")"
     actual="$(sha256_file "$TMP_DIR/$archive")"
