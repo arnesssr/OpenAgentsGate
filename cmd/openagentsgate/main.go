@@ -14,6 +14,7 @@ import (
 	"github.com/arnesssr/OpenAgentsGate/internal/action"
 	"github.com/arnesssr/OpenAgentsGate/internal/approval"
 	"github.com/arnesssr/OpenAgentsGate/internal/audit"
+	"github.com/arnesssr/OpenAgentsGate/internal/buildinfo"
 	"github.com/arnesssr/OpenAgentsGate/internal/config"
 	"github.com/arnesssr/OpenAgentsGate/internal/decision"
 	"github.com/arnesssr/OpenAgentsGate/internal/gateway"
@@ -22,8 +23,6 @@ import (
 	"github.com/arnesssr/OpenAgentsGate/internal/risk"
 	"github.com/arnesssr/OpenAgentsGate/internal/server"
 )
-
-const version = "0.1.0-dev"
 
 const (
 	exitUsage    = 2
@@ -60,7 +59,11 @@ func main() {
 	case "audit":
 		auditCommands(os.Args[2:])
 	case "version":
-		fmt.Println(version)
+		printJSON(map[string]string{
+			"version": buildinfo.Version,
+			"commit":  buildinfo.Commit,
+			"date":    buildinfo.Date,
+		})
 	default:
 		usage()
 		os.Exit(2)

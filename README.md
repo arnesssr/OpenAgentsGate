@@ -80,6 +80,30 @@ Implemented v0 backend capabilities:
 
 ## Quick Start
 
+Install from source with Go:
+
+```bash
+go install github.com/arnesssr/OpenAgentsGate/cmd/openagentsgate@latest
+```
+
+Build locally:
+
+```bash
+make build
+./bin/openagentsgate version
+```
+
+Release binaries are published from Git tags. After the first tagged release,
+the installer fetches the latest binary from GitHub Releases. Before that, it
+falls back to `go install`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/arnesssr/OpenAgentsGate/main/scripts/install.sh | sh
+```
+
+OpenAgentsGate is local-first. Updates come from GitHub Releases or `go install`;
+there is no required OpenAgentsGate cloud server.
+
 Check a single action from flags:
 
 ```bash

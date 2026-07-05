@@ -47,6 +47,8 @@ agent/tool/script -> normalized action request -> OpenAgentsGate -> decision
 - Do not shell-interpolate user input. Supervised commands must use argv with
   `os/exec`.
 - Keep runtime logs under `tmp/` or another ignored path.
+- Distribution is local-first: `go install`, static release binaries, and GitHub
+  Releases. Do not introduce a required OpenAgentsGate cloud server.
 
 ## Verification
 
@@ -56,6 +58,8 @@ Run these before claiming implementation is complete:
 gofmt -w cmd internal
 go test ./...
 go vet ./...
+make build
+./bin/openagentsgate version
 go run ./cmd/openagentsgate check -config examples/openagentsgate.json -action github.create_pr -agent codex -resource repo
 go run ./cmd/openagentsgate tool git -config examples/openagentsgate.json -- status --short
 ```
