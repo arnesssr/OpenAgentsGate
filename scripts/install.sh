@@ -79,7 +79,12 @@ install_from_go() {
     module="github.com/$REPO/cmd/openagentsgate@latest"
   fi
   echo "installing with go install: $module"
-  GOBIN="$BIN_DIR" go install "$module"
+  date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  ldflags="-s -w"
+  ldflags="$ldflags -X github.com/arnesssr/OpenAgentsGate/internal/buildinfo.Version=$VERSION"
+  ldflags="$ldflags -X github.com/arnesssr/OpenAgentsGate/internal/buildinfo.Commit=go-install"
+  ldflags="$ldflags -X github.com/arnesssr/OpenAgentsGate/internal/buildinfo.Date=$date"
+  GOBIN="$BIN_DIR" go install -ldflags "$ldflags" "$module"
   echo "installed $BIN_NAME to $BIN_DIR/$BIN_NAME"
 }
 
