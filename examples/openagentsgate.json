@@ -45,6 +45,15 @@
     "default_effect": "deny",
     "rules": [
       {
+        "id": "allow-wrapper-launch",
+        "description": "Launching a wrapped local agent process is allowed and audited.",
+        "match": {
+          "actions": ["agent.wrap"]
+        },
+        "effect": "allow",
+        "reason": "wrapped process launch is allowed"
+      },
+      {
         "id": "external-email-needs-approval",
         "description": "External email can create real-world side effects.",
         "match": {

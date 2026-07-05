@@ -80,10 +80,11 @@ Implemented v0 backend capabilities:
 
 ## Quick Start
 
-Install from source with Go:
+Install:
 
 ```bash
 go install github.com/arnesssr/OpenAgentsGate/cmd/openagentsgate@latest
+openagentsgate version
 ```
 
 Build locally:
@@ -104,12 +105,22 @@ curl -fsSL https://raw.githubusercontent.com/arnesssr/OpenAgentsGate/main/script
 OpenAgentsGate is local-first. Updates come from GitHub Releases or `go install`;
 there is no required OpenAgentsGate cloud server.
 
+Create the default user config:
+
+```bash
+openagentsgate init
+openagentsgate config doctor
+```
+
+Without `-config`, the CLI uses the nearest `.openagentsgate/config.json` above
+the current directory. If none exists, it uses
+`~/.config/openagentsgate/config.json` and stores local JSONL state under
+`~/.local/state/openagentsgate`.
+
 Check a single action from flags:
 
 ```bash
-go run ./cmd/openagentsgate check \
-  -config examples/openagentsgate.json \
-  -action github.create_pr -agent codex -resource repo
+openagentsgate check -action github.create_pr -agent codex -resource repo
 ```
 
 `check` exits `0` for allow, `10` for dry-run, `20` for approval required, and
@@ -118,29 +129,36 @@ go run ./cmd/openagentsgate check \
 Check a full action request from stdin:
 
 ```bash
-go run ./cmd/openagentsgate check \
-  -config examples/openagentsgate.json \
-  -request - -strict-exit=false < examples/action-request.json
+openagentsgate check -request - -strict-exit=false < examples/action-request.json
 ```
 
 Run a supervised read-only git command:
 
 ```bash
-go run ./cmd/openagentsgate tool git \
-  -config examples/openagentsgate.json -- status --short
+openagentsgate tool git -- status --short
 ```
 
 Inspect a shell command without executing it when policy says dry-run:
 
 ```bash
-go run ./cmd/openagentsgate tool shell \
-  -config examples/openagentsgate.json -- npm test
+openagentsgate tool shell -- npm test
 ```
+
+Launch an existing agent CLI under an audited session:
+
+```bash
+openagentsgate wrap -- codex
+```
+
+`wrap` authorizes and audits the process launch, then passes
+`OPENAGENTSGATE_CONFIG`, `OPENAGENTSGATE_SESSION`, and `OPENAGENTSGATE_AGENT`
+into the child process. Per-action enforcement inside that child requires the
+agent or an adapter to call OpenAgentsGate before it acts.
 
 Start the local HTTP decision service:
 
 ```bash
-go run ./cmd/openagentsgate run -config examples/openagentsgate.json
+openagentsgate run
 ```
 
 Then send an action request:
@@ -156,31 +174,27 @@ The gateway returns a deterministic decision and records an audit receipt.
 List pending approvals:
 
 ```bash
-go run ./cmd/openagentsgate approvals list \
-  -config examples/openagentsgate.json -status pending
+openagentsgate approvals list -status pending
 ```
 
 Resolve an approval:
 
 ```bash
-go run ./cmd/openagentsgate approvals resolve \
-  -config examples/openagentsgate.json \
+openagentsgate approvals resolve \
   -id <approval-id> -status approved -by admin -reason "reviewed"
 ```
 
 Revoke an agent:
 
 ```bash
-go run ./cmd/openagentsgate revocations add \
-  -config examples/openagentsgate.json \
+openagentsgate revocations add \
   -type agent -id support-agent -by admin -reason "compromised"
 ```
 
 Replay an audit receipt against current policy state:
 
 ```bash
-go run ./cmd/openagentsgate audit replay \
-  -config examples/openagentsgate.json -id <receipt-id>
+openagentsgate audit replay -id <receipt-id>
 ```
 
 HTTP API:

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -32,22 +31,27 @@ const (
 )
 
 type runtime struct {
-	cfg     config.Config
-	service *gateway.Service
+	cfg        config.Config
+	configPath string
+	service    *gateway.Service
 }
 
 func main() {
 	log.SetFlags(0)
 	if len(os.Args) < 2 {
-		usage()
-		os.Exit(2)
+		usage(os.Stdout)
+		return
 	}
 
 	switch os.Args[1] {
+	case "init":
+		initCommand(os.Args[2:])
 	case "run":
 		run(os.Args[2:])
 	case "check":
 		check(os.Args[2:])
+	case "wrap":
+		wrapCommand(os.Args[2:])
 	case "tool":
 		tool(os.Args[2:])
 	case "decide":
@@ -58,14 +62,18 @@ func main() {
 		revocations(os.Args[2:])
 	case "audit":
 		auditCommands(os.Args[2:])
+	case "config":
+		configCommand(os.Args[2:])
 	case "version":
 		printJSON(map[string]string{
 			"version": buildinfo.Version,
 			"commit":  buildinfo.Commit,
 			"date":    buildinfo.Date,
 		})
+	case "help", "-h", "--help":
+		usage(os.Stdout)
 	default:
-		usage()
+		usage(os.Stderr)
 		os.Exit(2)
 	}
 }
@@ -73,7 +81,7 @@ func main() {
 func check(args []string) {
 	fs := flag.NewFlagSet("check", flag.ExitOnError)
 	spec := requestFlags(fs)
-	configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+	configPath := configFlag(fs)
 	requestPath := fs.String("request", "", "path to full action request JSON, or - for stdin")
 	strictExit := fs.Bool("strict-exit", true, "exit non-zero unless decision is allow")
 	_ = fs.Parse(args)
@@ -111,7 +119,7 @@ func tool(args []string) {
 func toolGit(args []string) {
 	fs := flag.NewFlagSet("tool git", flag.ExitOnError)
 	spec := requestFlags(fs)
-	configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+	configPath := configFlag(fs)
 	_ = fs.Parse(args)
 	argv := fs.Args()
 	if len(argv) == 0 {
@@ -126,7 +134,7 @@ func toolGit(args []string) {
 func toolCommand(args []string, actionName, origin string, command func([]string) *exec.Cmd) {
 	fs := flag.NewFlagSet("tool shell", flag.ExitOnError)
 	spec := requestFlags(fs)
-	configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+	configPath := configFlag(fs)
 	_ = fs.Parse(args)
 	argv := fs.Args()
 	if len(argv) == 0 {
@@ -144,7 +152,7 @@ func runSupervisedCommand(configPath string, spec *requestSpec, actionName, orig
 	spec.action = valueOrDefault(spec.action, actionName)
 	spec.resource = valueOrDefault(spec.resource, cwd)
 	spec.origin = valueOrDefault(spec.origin, origin)
-	spec.input = map[string]any{"argv": argv, "cwd": cwd}
+	spec.input = commandInput(argv, cwd)
 
 	result, err := rt.service.Decide(spec.actionRequest(), time.Now().UTC())
 	if err != nil {
@@ -169,7 +177,7 @@ func runSupervisedCommand(configPath string, spec *requestSpec, actionName, orig
 
 func run(args []string) {
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
-	configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+	configPath := configFlag(fs)
 	_ = fs.Parse(args)
 
 	rt := mustRuntime(*configPath)
@@ -183,6 +191,7 @@ func run(args []string) {
 	}
 
 	httpServer := srv.HTTPServer(rt.cfg.ListenAddr)
+	log.Printf("openagentsgate config %s", rt.configPath)
 	log.Printf("openagentsgate listening on http://%s", rt.cfg.ListenAddr)
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("listen: %v", err)
@@ -191,7 +200,7 @@ func run(args []string) {
 
 func decide(args []string) {
 	fs := flag.NewFlagSet("decide", flag.ExitOnError)
-	configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+	configPath := configFlag(fs)
 	_ = fs.Parse(args)
 
 	rt := mustRuntime(*configPath)
@@ -407,7 +416,7 @@ func approvals(args []string) {
 	switch args[0] {
 	case "list":
 		fs := flag.NewFlagSet("approvals list", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		status := fs.String("status", "", "filter by approval status")
 		_ = fs.Parse(args[1:])
 		rt := mustRuntime(*configPath)
@@ -418,7 +427,7 @@ func approvals(args []string) {
 		printJSON(map[string]any{"approvals": records})
 	case "resolve":
 		fs := flag.NewFlagSet("approvals resolve", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		id := fs.String("id", "", "approval id")
 		status := fs.String("status", "", "approved or denied")
 		by := fs.String("by", "", "resolver identity")
@@ -444,7 +453,7 @@ func revocations(args []string) {
 	switch args[0] {
 	case "list":
 		fs := flag.NewFlagSet("revocations list", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		_ = fs.Parse(args[1:])
 		rt := mustRuntime(*configPath)
 		items, err := rt.service.ListRevocations()
@@ -454,7 +463,7 @@ func revocations(args []string) {
 		printJSON(map[string]any{"revocations": items})
 	case "add":
 		fs := flag.NewFlagSet("revocations add", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		targetType := fs.String("type", "", "target type")
 		targetID := fs.String("id", "", "target id")
 		reason := fs.String("reason", "", "revocation reason")
@@ -468,7 +477,7 @@ func revocations(args []string) {
 		printJSON(item)
 	case "remove":
 		fs := flag.NewFlagSet("revocations remove", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		targetType := fs.String("type", "", "target type")
 		targetID := fs.String("id", "", "target id")
 		reason := fs.String("reason", "", "restore reason")
@@ -493,7 +502,7 @@ func auditCommands(args []string) {
 	switch args[0] {
 	case "list":
 		fs := flag.NewFlagSet("audit list", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		limit := fs.Int("limit", 100, "maximum receipts to return")
 		_ = fs.Parse(args[1:])
 		rt := mustRuntime(*configPath)
@@ -504,7 +513,7 @@ func auditCommands(args []string) {
 		printJSON(map[string]any{"receipts": receipts})
 	case "get":
 		fs := flag.NewFlagSet("audit get", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		id := fs.String("id", "", "receipt id")
 		_ = fs.Parse(args[1:])
 		rt := mustRuntime(*configPath)
@@ -515,7 +524,7 @@ func auditCommands(args []string) {
 		printJSON(receipt)
 	case "replay":
 		fs := flag.NewFlagSet("audit replay", flag.ExitOnError)
-		configPath := fs.String("config", "examples/openagentsgate.json", "path to config file")
+		configPath := configFlag(fs)
 		id := fs.String("id", "", "receipt id")
 		_ = fs.Parse(args[1:])
 		rt := mustRuntime(*configPath)
@@ -531,7 +540,11 @@ func auditCommands(args []string) {
 }
 
 func mustRuntime(path string) runtime {
-	cfg, err := config.Load(path)
+	loc, err := resolveConfigPath(path, true)
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	cfg, err := config.Load(loc.Path)
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
@@ -563,7 +576,7 @@ func mustRuntime(path string) runtime {
 	if err != nil {
 		log.Fatalf("gateway: %v", err)
 	}
-	return runtime{cfg: cfg, service: service}
+	return runtime{cfg: cfg, configPath: loc.Path, service: service}
 }
 
 func printJSON(value any) {
@@ -572,24 +585,4 @@ func printJSON(value any) {
 	if err := encoder.Encode(value); err != nil {
 		log.Fatalf("json: %v", err)
 	}
-}
-
-func usage() {
-	fmt.Fprintln(os.Stderr, "usage: openagentsgate <run|check|tool|decide|approvals|revocations|audit|version> [flags]")
-}
-
-func toolUsage() {
-	fmt.Fprintln(os.Stderr, "usage: openagentsgate tool <shell|git> [flags] -- <command>")
-}
-
-func approvalUsage() {
-	fmt.Fprintln(os.Stderr, "usage: openagentsgate approvals <list|resolve> [flags]")
-}
-
-func revocationUsage() {
-	fmt.Fprintln(os.Stderr, "usage: openagentsgate revocations <list|add|remove> [flags]")
-}
-
-func auditUsage() {
-	fmt.Fprintln(os.Stderr, "usage: openagentsgate audit <list|get|replay> [flags]")
 }
