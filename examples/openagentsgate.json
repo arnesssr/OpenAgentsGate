@@ -32,6 +32,13 @@
         "actions": ["agent.*", "a2a.*"]
       },
       "risk": "agent_delegation"
+    },
+    {
+      "id": "git-publish",
+      "match": {
+        "actions": ["git.push", "git.tag"]
+      },
+      "risk": "external_side_effect"
     }
   ],
   "policy": {
@@ -82,6 +89,24 @@
         },
         "effect": "deny",
         "reason": "file deletion is blocked"
+      },
+      {
+        "id": "allow-readonly-git",
+        "description": "Read-only git inspection is allowed.",
+        "match": {
+          "actions": ["git.status", "git.diff", "git.log", "git.show", "git.branch"]
+        },
+        "effect": "allow",
+        "reason": "read-only git inspection is allowed"
+      },
+      {
+        "id": "git-publish-needs-approval",
+        "description": "Publishing git refs crosses a repo boundary.",
+        "match": {
+          "actions": ["git.push", "git.tag"]
+        },
+        "effect": "approval_required",
+        "reason": "publishing git refs requires approval"
       },
       {
         "id": "allow-github-prs",

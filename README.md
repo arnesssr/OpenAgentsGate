@@ -4,7 +4,7 @@
 
 # OpenAgentsGate
 
-Framework-agnostic action control plane for AI agent actions.
+Portable policy, audit, replay, and revocation for AI agent actions.
 
 Before an agent touches tools, files, APIs, money, email, code, or another
 agent, who proves it is allowed, what exactly is it allowed to do, and how do
@@ -22,9 +22,9 @@ Agent frameworks are getting good at planning, tool calling, delegation, and
 workflow execution. That creates a harder problem: once agents can act, every
 real system needs a durable way to control what they are allowed to do.
 
-OpenAgentsGate sits between agents and action surfaces. It is designed to
-enforce explicit policy before tool calls, record what happened after every
-action, and make dangerous autonomy auditable, revocable, and debuggable.
+OpenAgentsGate sits between agentic tools and action surfaces. It is designed
+to give Codex, Claude Code, CI agents, custom scripts, MCP tools, and future
+adapters one shared policy and audit layer.
 
 ## Core Goals
 
@@ -37,14 +37,15 @@ action, and make dangerous autonomy auditable, revocable, and debuggable.
 
 ## Initial Scope
 
-The first target is a protocol-neutral policy gateway for local developers and
-small teams:
+The first target is a protocol-neutral policy gateway for agentic developer
+workflows:
 
 - Accept normalized action requests from agents, apps, or adapters.
 - Classify tool calls by risk.
 - Allow, deny, dry-run, or require approval.
 - Log every attempted and completed action.
 - Expose a simple policy file for repeatable configuration.
+- Provide CLI surfaces that other tools can call before acting.
 
 MCP support belongs in an adapter. It is not a dependency of the core product.
 
@@ -79,11 +80,37 @@ Implemented v0 backend capabilities:
 
 ## Quick Start
 
-Run a policy decision from stdin:
+Check a single action from flags:
 
 ```bash
-go run ./cmd/openagentsgate decide \
-  -config examples/openagentsgate.json < examples/action-request.json
+go run ./cmd/openagentsgate check \
+  -config examples/openagentsgate.json \
+  -action github.create_pr -agent codex -resource repo
+```
+
+`check` exits `0` for allow, `10` for dry-run, `20` for approval required, and
+`30` for deny.
+
+Check a full action request from stdin:
+
+```bash
+go run ./cmd/openagentsgate check \
+  -config examples/openagentsgate.json \
+  -request - -strict-exit=false < examples/action-request.json
+```
+
+Run a supervised read-only git command:
+
+```bash
+go run ./cmd/openagentsgate tool git \
+  -config examples/openagentsgate.json -- status --short
+```
+
+Inspect a shell command without executing it when policy says dry-run:
+
+```bash
+go run ./cmd/openagentsgate tool shell \
+  -config examples/openagentsgate.json -- npm test
 ```
 
 Start the local HTTP decision service:
