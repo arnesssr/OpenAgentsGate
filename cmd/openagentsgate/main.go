@@ -533,6 +533,19 @@ func auditCommands(args []string) {
 			log.Fatalf("audit: %v", err)
 		}
 		printJSON(result)
+	case "verify":
+		fs := flag.NewFlagSet("audit verify", flag.ExitOnError)
+		configPath := configFlag(fs)
+		_ = fs.Parse(args[1:])
+		rt := mustRuntime(*configPath)
+		result, err := rt.service.VerifyAudit()
+		if err != nil {
+			log.Fatalf("audit: %v", err)
+		}
+		printJSON(result)
+		if !result.Valid {
+			os.Exit(1)
+		}
 	default:
 		auditUsage()
 		os.Exit(2)

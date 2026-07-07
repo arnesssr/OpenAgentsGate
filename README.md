@@ -220,6 +220,12 @@ Replay an audit receipt against current policy state:
 openagentsgate audit replay -id <receipt-id>
 ```
 
+Verify the audit log hash chain:
+
+```bash
+openagentsgate audit verify
+```
+
 HTTP API:
 
 ```text

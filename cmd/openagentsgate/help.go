@@ -33,7 +33,7 @@ func revocationUsage() {
 }
 
 func auditUsage() {
-	fmt.Fprintln(os.Stderr, "usage: openagentsgate audit <list|get|replay> [flags]")
+	fmt.Fprintln(os.Stderr, "usage: openagentsgate audit <list|get|replay|verify> [flags]")
 }
 
 func configUsage() {

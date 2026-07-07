@@ -128,6 +128,10 @@ func (s *Service) GetAudit(id string) (audit.Receipt, error) {
 	return s.audit.Get(id)
 }
 
+func (s *Service) VerifyAudit() (audit.VerificationResult, error) {
+	return s.audit.Verify()
+}
+
 func (s *Service) ListApprovals(status approval.Status) ([]approval.Record, error) {
 	return s.approvals.List(status)
 }

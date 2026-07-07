@@ -27,6 +27,19 @@ type Receipt struct {
 	RecordedAt    time.Time         `json:"recorded_at"`
 }
 
+type VerificationFailure struct {
+	Line      int    `json:"line"`
+	ReceiptID string `json:"receipt_id,omitempty"`
+	Reason    string `json:"reason"`
+}
+
+type VerificationResult struct {
+	Valid        bool                  `json:"valid"`
+	ReceiptCount int                   `json:"receipt_count"`
+	LastHash     string                `json:"last_hash,omitempty"`
+	Failures     []VerificationFailure `json:"failures,omitempty"`
+}
+
 type Recorder struct {
 	path string
 	mu   sync.Mutex
@@ -100,6 +113,47 @@ func (r *Recorder) Get(id string) (Receipt, error) {
 	return Receipt{}, os.ErrNotExist
 }
 
+func (r *Recorder) Verify() (VerificationResult, error) {
+	if r == nil {
+		return VerificationResult{}, errors.New("audit recorder is nil")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	file, err := os.Open(r.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return VerificationResult{Valid: true}, nil
+	}
+	if err != nil {
+		return VerificationResult{}, err
+	}
+	defer file.Close()
+
+	result := VerificationResult{Valid: true}
+	var previousHash string
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	for line := 1; scanner.Scan(); line++ {
+		var receipt Receipt
+		if err := json.Unmarshal(scanner.Bytes(), &receipt); err != nil {
+			result.addFailure(line, "", "invalid JSON receipt")
+			continue
+		}
+		result.ReceiptCount++
+		if receipt.IntegrityHash == "" {
+			result.addFailure(line, receipt.ID, "missing integrity hash")
+		} else if got := hashReceipt(receipt); got != receipt.IntegrityHash {
+			result.addFailure(line, receipt.ID, "integrity hash mismatch")
+		}
+		if receipt.PreviousHash != previousHash {
+			result.addFailure(line, receipt.ID, "previous hash mismatch")
+		}
+		previousHash = receipt.IntegrityHash
+		result.LastHash = previousHash
+	}
+	return result, scanner.Err()
+}
+
 func (r *Recorder) readAll() ([]Receipt, error) {
 	if r == nil {
 		return nil, errors.New("audit recorder is nil")
@@ -153,6 +207,15 @@ func (r *Recorder) lastHashLocked() (string, error) {
 		return "", err
 	}
 	return last.IntegrityHash, nil
+}
+
+func (r *VerificationResult) addFailure(line int, receiptID, reason string) {
+	r.Valid = false
+	r.Failures = append(r.Failures, VerificationFailure{
+		Line:      line,
+		ReceiptID: receiptID,
+		Reason:    reason,
+	})
 }
 
 func sanitizeRequest(req action.Request) action.Request {
