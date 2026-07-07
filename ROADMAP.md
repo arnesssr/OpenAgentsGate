@@ -34,6 +34,8 @@ layer.
 
 ## Phase 1: Harden The Current Core
 
+Status: complete.
+
 Goal: make the existing local engine boring and trustworthy.
 
 Work:
@@ -44,6 +46,18 @@ Work:
 - document JSONL state files and config discovery
 - keep the HTTP layer transport-only
 - keep the CLI installable outside the source repository
+
+Completed evidence:
+
+- policy, approval, revocation, audit, redaction, HTTP boundary, config, and CLI
+  tests cover the current core behavior
+- `openagentsgate audit verify` validates audit log hash chains
+- `make verify` creates isolated temp state and verifies a fresh audit chain
+- `docs/state-and-config.md` documents JSONL state files and config discovery
+- HTTP handlers remain limited to auth, decoding, status mapping, and gateway
+  delegation
+- installability is verified with an installed binary executed outside the
+  source checkout
 
 Exit criteria:
 
@@ -162,10 +176,11 @@ Exit criteria:
 
 The best near-term contributions are:
 
-- focused tests around policy, approval, revocation, audit, and redaction
-- docs that clarify current behavior
+- RFCs for `spec/v0` schemas and adapter contracts
+- conformance fixtures for action requests, decisions, approvals, revocations,
+  and audit receipts
 - small CLI usability fixes
 - issue reproductions with exact commands
-- RFCs for schema and adapter contracts
+- focused tests for new protocol or adapter work
 
 Avoid large rewrites without an issue or RFC first.

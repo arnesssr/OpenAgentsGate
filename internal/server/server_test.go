@@ -18,6 +18,73 @@ import (
 )
 
 func TestDecideEndpointRecordsDecision(t *testing.T) {
+	srv := newTestServer(t, "")
+
+	body := strings.NewReader(`{
+		"agent_id":"support-agent",
+		"action":"email.send",
+		"risk":"external_side_effect",
+		"input":{"api_token":"secret-value"}
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/actions/decide", body)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte(`"effect":"approval_required"`)) {
+		t.Fatalf("missing approval decision: %s", rr.Body.String())
+	}
+}
+
+func TestAdminTokenProtectsAPIRoutesButNotHealth(t *testing.T) {
+	srv := newTestServer(t, "secret-token")
+	handler := srv.Handler()
+
+	health := httptest.NewRecorder()
+	handler.ServeHTTP(health, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if health.Code != http.StatusOK {
+		t.Fatalf("health status = %d", health.Code)
+	}
+
+	unauthorized := httptest.NewRecorder()
+	body := strings.NewReader(`{"agent_id":"codex","action":"github.create_pr"}`)
+	handler.ServeHTTP(unauthorized, httptest.NewRequest(http.MethodPost, "/v1/actions/decide", body))
+	if unauthorized.Code != http.StatusUnauthorized {
+		t.Fatalf("unauthorized status = %d, body = %s", unauthorized.Code, unauthorized.Body.String())
+	}
+
+	authorized := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/actions/decide", strings.NewReader(`{"agent_id":"codex","action":"github.create_pr"}`))
+	req.Header.Set("Authorization", "Bearer secret-token")
+	handler.ServeHTTP(authorized, req)
+	if authorized.Code != http.StatusOK {
+		t.Fatalf("authorized status = %d, body = %s", authorized.Code, authorized.Body.String())
+	}
+}
+
+func TestDecideEndpointRejectsUnknownFields(t *testing.T) {
+	srv := newTestServer(t, "")
+	body := strings.NewReader(`{
+		"agent_id":"support-agent",
+		"action":"email.send",
+		"unexpected":"field"
+	}`)
+	req := httptest.NewRequest(http.MethodPost, "/v1/actions/decide", body)
+	rr := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	}
+	if !bytes.Contains(rr.Body.Bytes(), []byte(`"error":"invalid JSON request"`)) {
+		t.Fatalf("unexpected error body: %s", rr.Body.String())
+	}
+}
+
+func newTestServer(t *testing.T, adminToken string) *Server {
+	t.Helper()
 	evaluator, err := policy.NewEvaluator(policy.Policy{
 		DefaultEffect: decision.EffectDeny,
 		Rules: []policy.Rule{
@@ -57,25 +124,9 @@ func TestDecideEndpointRecordsDecision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new gateway: %v", err)
 	}
-	srv, err := New(service, "")
+	srv, err := New(service, adminToken)
 	if err != nil {
 		t.Fatalf("new server: %v", err)
 	}
-
-	body := strings.NewReader(`{
-		"agent_id":"support-agent",
-		"action":"email.send",
-		"risk":"external_side_effect",
-		"input":{"api_token":"secret-value"}
-	}`)
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/decide", body)
-	rr := httptest.NewRecorder()
-	srv.Handler().ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
-	}
-	if !bytes.Contains(rr.Body.Bytes(), []byte(`"effect":"approval_required"`)) {
-		t.Fatalf("missing approval decision: %s", rr.Body.String())
-	}
+	return srv
 }

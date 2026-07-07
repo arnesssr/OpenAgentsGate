@@ -228,7 +228,10 @@ func (s *Store) snapshotLocked() (map[string]Record, error) {
 				CreatedAt: event.CreatedAt,
 			}
 		case EventResolved:
-			record := records[event.ApprovalID]
+			record, ok := records[event.ApprovalID]
+			if !ok {
+				return nil, fmt.Errorf("approval %s resolved before creation", event.ApprovalID)
+			}
 			record.Status = event.Status
 			resolvedAt := event.ResolvedAt
 			record.ResolvedAt = &resolvedAt

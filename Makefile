@@ -31,6 +31,15 @@ verify: test vet
 	XDG_STATE_HOME="$$tmp/state" go run $(PKG) init -config "$$tmp/config.json" >/dev/null; \
 	go run $(PKG) check -config "$$tmp/config.json" -action github.create_pr -agent codex -resource repo >/dev/null; \
 	go run $(PKG) audit verify -config "$$tmp/config.json"
+	install_tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$install_tmp"' EXIT; \
+	mkdir -p "$$install_tmp/bin" "$$install_tmp/work"; \
+	GOBIN="$$install_tmp/bin" go install $(PKG); \
+	cd "$$install_tmp/work"; \
+	XDG_CONFIG_HOME="$$install_tmp/config" XDG_STATE_HOME="$$install_tmp/state" "$$install_tmp/bin/openagentsgate" init >/dev/null; \
+	XDG_CONFIG_HOME="$$install_tmp/config" XDG_STATE_HOME="$$install_tmp/state" "$$install_tmp/bin/openagentsgate" config doctor >/dev/null; \
+	XDG_CONFIG_HOME="$$install_tmp/config" XDG_STATE_HOME="$$install_tmp/state" "$$install_tmp/bin/openagentsgate" check -action github.create_pr -agent codex -resource repo >/dev/null; \
+	XDG_CONFIG_HOME="$$install_tmp/config" XDG_STATE_HOME="$$install_tmp/state" "$$install_tmp/bin/openagentsgate" audit verify >/dev/null
 
 clean:
 	rm -rf $(BIN_DIR) dist

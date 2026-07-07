@@ -140,6 +140,9 @@ the current directory. If none exists, it uses
 `~/.config/openagentsgate/config.json` and stores local JSONL state under
 `~/.local/state/openagentsgate`.
 
+See [docs/state-and-config.md](docs/state-and-config.md) for the config
+discovery order, JSONL state files, and recovery notes.
+
 Check a single action from flags:
 
 ```bash
@@ -256,7 +259,8 @@ enforced outside the model, not by asking the model to behave.
 Early project. The intended direction is a minimal, secure-by-default gateway
 before adding broader framework adapters.
 
-See [ROADMAP.md](ROADMAP.md) for the current public direction.
+Phase 1 core hardening is complete. See [ROADMAP.md](ROADMAP.md) for the
+current public direction.
 
 ## Contributing
 

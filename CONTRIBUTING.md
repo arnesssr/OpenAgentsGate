@@ -47,6 +47,7 @@ Build and test:
 go test ./...
 go vet ./...
 make build
+make verify
 ./bin/openagentsgate version
 ```
 
