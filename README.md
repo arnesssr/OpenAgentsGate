@@ -35,6 +35,29 @@ adapters one shared policy and audit layer.
 - Provide a kill switch and revocation path for agents, tools, and policies.
 - Work across agent frameworks instead of replacing them.
 
+## Project Direction
+
+OpenAgentsGate is becoming a neutral authorization control plane for agent
+actions.
+
+The project should stay protocol-neutral: agents, IDEs, CI systems, MCP
+servers, custom scripts, and future SDKs should be able to ask the same
+question before an action runs:
+
+```text
+Can this agent perform this action on this resource under this authority?
+```
+
+The core project answers with a deterministic decision:
+
+```text
+allow | deny | dry_run | require_approval
+```
+
+OpenAgentsGate is not an agent runtime, model provider, IDE, MCP server, or
+hosted cloud requirement. It is the policy, approval, audit, replay, and
+revocation layer those systems can share.
+
 ## Initial Scope
 
 The first target is a protocol-neutral policy gateway for agentic developer
@@ -226,3 +249,21 @@ enforced outside the model, not by asking the model to behave.
 
 Early project. The intended direction is a minimal, secure-by-default gateway
 before adding broader framework adapters.
+
+See [ROADMAP.md](ROADMAP.md) for the current public direction.
+
+## Contributing
+
+Contributions should make the project safer, clearer, or easier to integrate.
+Start with [CONTRIBUTING.md](CONTRIBUTING.md), then check open issues and the
+roadmap.
+
+Larger changes should begin as an RFC under [docs/rfcs](docs/rfcs). Accepted
+architecture decisions are recorded under [docs/adr](docs/adr).
+
+Security-sensitive reports should follow [SECURITY.md](SECURITY.md). Do not
+open public issues with exploit details, secrets, or private system data.
+
+This repository does not currently include a public license file. Maintainers
+should choose and publish a license before accepting broad external
+contributions.
