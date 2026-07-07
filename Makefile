@@ -26,6 +26,11 @@ vet:
 verify: test vet
 	go run $(PKG) check -config examples/openagentsgate.json -action github.create_pr -agent codex -resource repo
 	go run $(PKG) tool git -config examples/openagentsgate.json -- status --short
+	tmp="$$(mktemp -d)"; \
+	trap 'rm -rf "$$tmp"' EXIT; \
+	XDG_STATE_HOME="$$tmp/state" go run $(PKG) init -config "$$tmp/config.json" >/dev/null; \
+	go run $(PKG) check -config "$$tmp/config.json" -action github.create_pr -agent codex -resource repo >/dev/null; \
+	go run $(PKG) audit verify -config "$$tmp/config.json"
 
 clean:
 	rm -rf $(BIN_DIR) dist

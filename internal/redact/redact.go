@@ -49,11 +49,22 @@ func Value(value any) any {
 }
 
 func sensitiveKey(key string) bool {
-	normalized := strings.ToLower(strings.TrimSpace(key))
+	normalized := normalizeKey(key)
 	for _, part := range sensitiveKeyParts {
-		if strings.Contains(normalized, part) {
+		if strings.Contains(normalized, normalizeKey(part)) {
 			return true
 		}
 	}
 	return false
+}
+
+func normalizeKey(key string) string {
+	return strings.Map(func(r rune) rune {
+		switch r {
+		case '-', '_', '.', ' ', '\t', '\n', '\r':
+			return -1
+		default:
+			return r
+		}
+	}, strings.ToLower(strings.TrimSpace(key)))
 }

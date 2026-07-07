@@ -149,7 +149,7 @@ Work:
 - publish maintainer roles
 - publish project decision process
 - define conformance or certification criteria
-- choose and publish a repository license
+- keep license, release, and compatibility guidance explicit
 
 Exit criteria:
 

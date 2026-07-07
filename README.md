@@ -270,6 +270,6 @@ architecture decisions are recorded under [docs/adr](docs/adr).
 Security-sensitive reports should follow [SECURITY.md](SECURITY.md). Do not
 open public issues with exploit details, secrets, or private system data.
 
-This repository does not currently include a public license file. Maintainers
-should choose and publish a license before accepting broad external
-contributions.
+## License
+
+OpenAgentsGate is licensed under the Apache License 2.0. See [LICENSE](LICENSE).

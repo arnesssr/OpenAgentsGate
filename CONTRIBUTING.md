@@ -148,9 +148,7 @@ Your pull request should explain:
 - verification performed
 - any tradeoffs or known limits
 
-## Licensing Note
+## License
 
-This repository does not currently include a public license file. Maintainers
-should choose and publish a license before accepting broad external
-contributions. Until then, contributors should confirm licensing expectations
-with a maintainer before submitting large work.
+By contributing, you agree that your contribution is provided under the Apache
+License 2.0. See `LICENSE`.
